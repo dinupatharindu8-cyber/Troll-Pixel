@@ -12,6 +12,7 @@
   VolumeX,
 } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { AdBanner } from './components/AdBanner';
 import { LevelSelectModal } from './components/LevelSelectModal';
 import { formatRunTime, ShareModal } from './components/ShareModal';
 import { GameEngine } from './game/engine';
@@ -589,7 +590,7 @@ export default function App() {
             <div className="absolute inset-0 flex items-center justify-center bg-[#1B0E06]/80 p-4">
               <div className="w-full max-w-md rounded-xl border-2 border-[#E29848] bg-[#2B170A] p-6 text-center shadow-2xl sm:p-8">
                 <div className="font-arcade text-xs font-semibold tracking-wide text-[#E8A14F]">
-                  30 Deceptive Stages · 3 Worlds
+                  50 Deceptive Stages · 5 Worlds
                 </div>
                 <h1 className="mt-2 font-arcade text-4xl font-black tracking-tight text-[#FFF7ED] sm:text-5xl">
                   TROLL PIXEL
@@ -632,7 +633,7 @@ export default function App() {
         </div>
 
         {touchVisible && phase === 'PLAYING' && !showLevelSelect && !showShareModal && (
-          <div className="pointer-events-none fixed inset-x-0 bottom-3 z-30 flex items-end justify-between px-4 sm:bottom-5 sm:px-8">
+          <div className="pointer-events-none fixed inset-x-0 bottom-28 z-30 flex items-end justify-between px-4 sm:bottom-28 sm:px-8">
             <div className="pointer-events-auto flex items-center gap-3">
               <button
                 type="button"
@@ -653,7 +654,7 @@ export default function App() {
             </div>
 
             <div className="pointer-events-auto flex items-center gap-3">
-              {currentLevelId === 21 && (
+              {(currentLevelId === 21 || currentLevelId === 35) && (
                 <button
                   type="button"
                   aria-label="Down"
@@ -675,6 +676,9 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Bottom Adsterra Banner */}
+      <AdBanner />
 
       <LevelSelectModal
         open={showLevelSelect}
