@@ -1,4 +1,4 @@
-﻿import { LevelDef } from './types';
+import { LevelDef } from './types';
 
 export const GAME_WIDTH = 960;
 export const GAME_HEIGHT = 540;
