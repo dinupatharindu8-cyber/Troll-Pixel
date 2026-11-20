@@ -1,0 +1,6 @@
+{
+  "name": "TROLL PIXEL",
+  "description": "A retro-minimalist 2D troll platformer with 10 deceptive levels, 60Hz precision physics, and instant respawns.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
