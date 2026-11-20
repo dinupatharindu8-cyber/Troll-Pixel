@@ -1,4 +1,4 @@
-﻿import { Check, Lock, RotateCcw, Share2, X } from 'lucide-react';
+import { Check, Lock, RotateCcw, Share2, X } from 'lucide-react';
 import { LEVELS } from '../game/levels';
 import { LevelProgress } from '../game/types';
 
