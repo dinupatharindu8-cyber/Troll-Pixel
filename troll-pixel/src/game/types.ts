@@ -220,6 +220,7 @@ export interface RuntimeSpike extends SpikeDef {
   active: boolean;
   vanished: boolean;
   popScale: number;
+  prevPopScale: number;
   popVel: number;
   armed: boolean;
   armTimer: number;
@@ -336,6 +337,7 @@ export interface FloatingCallout {
   active: boolean;
   x: number;
   y: number;
+  prevY: number;
   vy: number;
   text: string;
   color: string;
@@ -380,8 +382,13 @@ export interface InputState {
   jumpJustPressed: boolean;
 }
 
+export type SkinId = 'default' | 'clown' | 'ninja' | 'king';
+
 export interface LevelProgress {
   unlockedLevel: number;
   deathsPerLevel: Record<number, number>;
   completedLevels: number[];
+  selectedSkin?: SkinId;
+  totalDeaths?: number;
+  bestRunMs?: number;
 }

@@ -313,19 +313,43 @@ class RetroSoundEngine {
     const ctx = this.ensureContext();
     if (!ctx) return;
     const now = ctx.currentTime;
-    const notes = [440, 660, 880];
-    notes.forEach((f, idx) => {
+    // Crisp 8-bit coin / switch pickup chime (B5 -> E6)
+    const tones = [
+      { freq: 987.77, time: 0, dur: 0.065 },
+      { freq: 1318.51, time: 0.055, dur: 0.16 },
+    ];
+    tones.forEach((tDef) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'square';
-      const t = now + idx * 0.04;
-      osc.frequency.setValueAtTime(f, t);
-      gain.gain.setValueAtTime(0.08, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      const t = now + tDef.time;
+      osc.frequency.setValueAtTime(tDef.freq, t);
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + tDef.dur);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(t);
-      osc.stop(t + 0.09);
+      osc.stop(t + tDef.dur + 0.01);
+    });
+  }
+
+  public playUnlock(): void {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const notes = [587.33, 739.99, 880, 1174.66];
+    notes.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      const t = now + idx * 0.05;
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.09, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.11);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.12);
     });
   }
 

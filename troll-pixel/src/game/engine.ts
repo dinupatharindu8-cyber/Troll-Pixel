@@ -1,5 +1,6 @@
 import { GAME_HEIGHT, GAME_WIDTH, LEVELS } from './levels';
 import { soundEngine } from './sound';
+import { drawSkinBody, getSkinParticleColors } from './skins';
 import {
   CloneFrame,
   FloatingCallout,
@@ -17,6 +18,7 @@ import {
   RuntimeSawblade,
   RuntimeSpike,
   RuntimeSwitch,
+  SkinId,
 } from './types';
 
 const FIXED_DT = 1 / 120;
@@ -43,9 +45,22 @@ const CALLOUT_POOL_SIZE = 16;
 const RAIN_SPIKE_POOL_SIZE = 64;
 const CLONE_RING_SIZE = 256;
 const STATIC_PAD = 64;
-const STATIC_SCALE = 2;
+const STATIC_SCALE = 1.5;
 
-const DEATH_COLORS = ['#3B2110', '#FFF7ED', '#5C3317', '#261408', '#FDE68A'];
+const DEATH_QUIPS = [
+  'Skill issue 💀',
+  'Trusted the floor?',
+  'So close... NOT!',
+  'Gravity says no',
+  'Bruh...',
+  'Nice reflexes lol',
+  'Totally fair!',
+  'Bait taken!',
+  'OOF!',
+  'Watch your step!',
+  'Gotcha!',
+  'Try again, champ',
+] as const;
 const WIN_COLORS = ['#FDE68A', '#FFF7ED', '#A78BFA', '#F59E0B'];
 const CONFETTI_COLORS = ['#FDE68A', '#4ADE80', '#60A5FA', '#F472B6', '#FFF7ED'];
 const BURST_COLORS = ['#DC2626', '#FEF08A', '#3B2110', '#FFF7ED'];
@@ -194,6 +209,8 @@ export class GameEngine {
   private shakeIntensity = 0;
   private globalTime = 0;
   private active = false;
+  private skinId: SkinId = 'default';
+  private lastDeathQuipIdx = -1;
   private callbacks: EngineCallbacks;
 
   constructor(callbacks: EngineCallbacks) {
@@ -229,6 +246,7 @@ export class GameEngine {
       active: false,
       x: 0,
       y: 0,
+      prevY: 0,
       vy: 0,
       text: '',
       color: '#FFF7ED',
@@ -344,6 +362,10 @@ export class GameEngine {
     this.active = isActive;
   }
 
+  public setSkin(skinId: SkinId): void {
+    this.skinId = skinId;
+  }
+
   public loadLevel(levelId: number, resetPersisted = true): void {
     const found = LEVELS.find((l) => l.id === levelId) || LEVELS[0];
     this.level = found;
@@ -433,11 +455,13 @@ export class GameEngine {
 
     this.spikes = this.level.spikes.map((s) => {
       const isStatic = (s.kind === undefined || s.kind === 'normal') && !s.hiddenUntilDoorTrigger;
+      const startScale = s.hiddenUntilDoorTrigger || s.kind === 'delayed' ? 0 : 1;
       return {
         ...s,
         active: !s.hiddenUntilDoorTrigger,
         vanished: false,
-        popScale: s.hiddenUntilDoorTrigger || s.kind === 'delayed' ? 0 : 1,
+        popScale: startScale,
+        prevPopScale: startScale,
         popVel: 0,
         armed: false,
         armTimer: 0,
@@ -734,6 +758,16 @@ export class GameEngine {
         pt.prevY = pt.y;
       }
     }
+
+    for (let i = 0; i < CALLOUT_POOL_SIZE; i++) {
+      const c = this.callouts[i];
+      if (c.active) c.prevY = c.y;
+    }
+
+    for (let i = 0; i < this.spikes.length; i++) {
+      const s = this.spikes[i];
+      if (s.active && !s.vanished) s.prevPopScale = s.popScale;
+    }
   }
 
   public stepFrame(rawDt: number, input: InputState): void {
@@ -811,7 +845,13 @@ export class GameEngine {
     }
   }
 
-  private addCallout(x: number, y: number, text: string, color = '#FFF7ED'): void {
+  private addCallout(
+    x: number,
+    y: number,
+    text: string,
+    color = '#FFF7ED',
+    duration = 0.9
+  ): void {
     for (let n = 0; n < CALLOUT_POOL_SIZE; n++) {
       const idx = (this.calloutCursor + n) % CALLOUT_POOL_SIZE;
       const c = this.callouts[idx];
@@ -820,11 +860,12 @@ export class GameEngine {
         c.active = true;
         c.x = x;
         c.y = y;
+        c.prevY = y;
         c.vy = -42;
         c.text = text;
         c.color = color;
-        c.life = 0.9;
-        c.maxLife = 0.9;
+        c.life = duration;
+        c.maxLife = duration;
         return;
       }
     }
@@ -833,11 +874,12 @@ export class GameEngine {
     c.active = true;
     c.x = x;
     c.y = y;
+    c.prevY = y;
     c.vy = -42;
     c.text = text;
     c.color = color;
-    c.life = 0.9;
-    c.maxLife = 0.9;
+    c.life = duration;
+    c.maxLife = duration;
   }
 
   private allocParticle(
@@ -985,13 +1027,20 @@ export class GameEngine {
     this.fakeDeathActive = false;
     this.shakeIntensity = 9;
 
+    const deathCx = this.player.x + this.player.w / 2;
+    const deathCy = this.player.y + this.player.h / 2;
+
+    let quipIdx = Math.floor(Math.random() * DEATH_QUIPS.length);
+    if (quipIdx === this.lastDeathQuipIdx) {
+      quipIdx = (quipIdx + 1) % DEATH_QUIPS.length;
+    }
+    this.lastDeathQuipIdx = quipIdx;
+    const popX = Math.max(82, Math.min(GAME_WIDTH - 82, deathCx));
+    const popY = Math.max(46, Math.min(GAME_HEIGHT - 36, this.player.y - 14));
+    this.addCallout(popX, popY, DEATH_QUIPS[quipIdx], '#FFF7ED', 1.2);
+
     soundEngine.playDeath();
-    this.spawnExplosion(
-      this.player.x + this.player.w / 2,
-      this.player.y + this.player.h / 2,
-      26,
-      DEATH_COLORS
-    );
+    this.spawnExplosion(deathCx, deathCy, 26, getSkinParticleColors(this.skinId));
     this.callbacks.onDeath(this.level.id);
   }
 
@@ -2062,7 +2111,8 @@ export class GameEngine {
     this.ensureContextCaches(ctx);
 
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     // Extended background so camera look-ahead & shake never reveal edges
     ctx.fillStyle = this.cachedBgGrad || '#E29848';
@@ -2152,7 +2202,7 @@ export class GameEngine {
       const spike = this.spikes[i];
       if (!spike.active || spike.vanished) continue;
       if (this.hasStaticCache && spike.isStaticCached) continue;
-      this.drawSpikeStrip(ctx, spike);
+      this.drawSpikeStrip(ctx, spike, alpha);
     }
 
     for (let i = 0; i < RAIN_SPIKE_POOL_SIZE; i++) {
@@ -2276,14 +2326,15 @@ export class GameEngine {
       if (!c.active) continue;
       const cAlpha = Math.max(0, Math.min(1, c.life / 0.3));
       const drawX = this.player.mirrored ? GAME_WIDTH - c.x : c.x;
+      const drawY = lerp(c.prevY, c.y, alpha);
       ctx.save();
       ctx.globalAlpha = cAlpha;
       ctx.font = '900 15px ui-monospace, SFMono-Regular, Menlo, monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#261408';
-      ctx.fillText(c.text, drawX + 2, c.y + 2);
+      ctx.fillText(c.text, drawX + 2, drawY + 2);
       ctx.fillStyle = c.color;
-      ctx.fillText(c.text, drawX, c.y);
+      ctx.fillText(c.text, drawX, drawY);
       ctx.restore();
     }
 
@@ -2486,7 +2537,7 @@ export class GameEngine {
     ctx.restore();
   }
 
-  private drawSpikeStrip(ctx: CanvasRenderingContext2D, s: RuntimeSpike): void {
+  private drawSpikeStrip(ctx: CanvasRenderingContext2D, s: RuntimeSpike, alpha: number): void {
     const spikeUnit = 16;
     ctx.save();
 
@@ -2501,10 +2552,12 @@ export class GameEngine {
       return;
     }
 
+    const rScale = lerp(s.prevPopScale, s.popScale, alpha);
+
     if (s.dir === 'up' || s.dir === 'down') {
       const count = Math.max(1, Math.round(s.w / spikeUnit));
       const unitW = s.w / count;
-      const h = s.h * s.popScale;
+      const h = s.h * rScale;
       const baseY = s.dir === 'up' ? s.y + s.h : s.y;
       const tipY = s.dir === 'up' ? s.y + s.h - h : s.y + h;
 
@@ -2534,7 +2587,7 @@ export class GameEngine {
     } else {
       const count = Math.max(1, Math.round(s.h / spikeUnit));
       const unitH = s.h / count;
-      const w = s.w * s.popScale;
+      const w = s.w * rScale;
       const baseX = s.dir === 'left' ? s.x + s.w : s.x;
       const tipX = s.dir === 'left' ? s.x + s.w - w : s.x + w;
 
@@ -2833,42 +2886,18 @@ export class GameEngine {
     ctx.rotate(lean);
     ctx.scale(sqX, sqY * p.gravityDir);
 
-    const bodyW = p.w;
-    const bodyH = p.h - 5;
-
-    const moving = Math.abs(p.vx) > 20;
-    const legSwing = moving && p.onGround ? Math.sin(p.runCycle) * 3.5 : 0;
-    const leftLegY = -6 + Math.max(0, -legSwing);
-    const rightLegY = -6 + Math.max(0, legSwing);
-
-    ctx.fillStyle = '#261408';
-    ctx.fillRect(-7 + legSwing * 0.4, leftLegY, 5, 6);
-    ctx.fillRect(2 - legSwing * 0.4, rightLegY, 5, 6);
-
-    ctx.fillStyle = '#261408';
-    ctx.fillRect(-bodyW / 2, -p.h, bodyW, bodyH);
-
-    ctx.fillStyle = '#4A2813';
-    ctx.fillRect(-bodyW / 2 + 2, -p.h + 2, bodyW - 4, bodyH - 4);
-
-    ctx.fillStyle = '#F59E0B';
-    ctx.fillRect(-bodyW / 2 + 2, -p.h + 2, bodyW - 4, 3);
-
-    const lookShift = p.facing * 2.5;
-    const eyeY = -p.h + 9;
-    const isPanic = p.panicTimer > 0 || !p.onGround;
-    const eyeW = isPanic ? 6 : 5;
-    const eyeH = isPanic ? 7 : 6;
-
-    ctx.fillStyle = '#FFF7ED';
-    ctx.fillRect(-7 + lookShift, eyeY, eyeW, eyeH);
-    ctx.fillRect(2 + lookShift, eyeY, eyeW, eyeH);
-
-    const pupilOffsetX = p.facing === 1 ? 2 : 0;
-    const pupilOffsetY = p.vy * p.gravityDir > 120 ? 3 : 2;
-    ctx.fillStyle = '#1B0E06';
-    ctx.fillRect(-7 + lookShift + pupilOffsetX, eyeY + pupilOffsetY, 2.5, 2.5);
-    ctx.fillRect(2 + lookShift + pupilOffsetX, eyeY + pupilOffsetY, 2.5, 2.5);
+    drawSkinBody(ctx, {
+      skinId: this.skinId,
+      w: p.w,
+      h: p.h,
+      facing: p.facing,
+      vx: p.vx,
+      vy: p.vy,
+      onGround: p.onGround,
+      isPanic: p.panicTimer > 0 || !p.onGround,
+      gravityDir: p.gravityDir,
+      runCycle: p.runCycle,
+    });
 
     ctx.restore();
   }
