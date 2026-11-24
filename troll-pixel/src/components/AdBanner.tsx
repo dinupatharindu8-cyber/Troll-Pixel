@@ -1,48 +1,99 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+declare global {
+  interface Window {
+    atOptions?: {
+      key: string;
+      format: string;
+      height: number;
+      width: number;
+      params: Record<string, unknown>;
+    };
+  }
+}
+
+const MOBILE_BANNER = {
+  key: '001e8aff2d2b6f5e150e16ad3b4dfbd5',
+  width: 320,
+  height: 50,
+  src: 'https://bauval.org/22/001e8aff2d2b6f5e150e16ad3b4dfbd5',
+} as const;
+
+const DESKTOP_BANNER = {
+  key: '9e5b7e2779af4bff9cd0cf5db7614123',
+  width: 728,
+  height: 90,
+  src: 'https://bauval.org/22/9e5b7e2779af4bff9cd0cf5db7614123',
+} as const;
 
 export function AdBanner() {
-  const bannerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isDesktop, setIsDesktop] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth >= 768 : false
+  );
 
   useEffect(() => {
-    const container = bannerRef.current;
+    const onResize = () => {
+      const nextDesktop = window.innerWidth >= 768;
+      setIsDesktop((prev) => (prev === nextDesktop ? prev : nextDesktop));
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
     if (!container) return;
+
+    const config = isDesktop ? DESKTOP_BANNER : MOBILE_BANNER;
 
     container.innerHTML = '';
 
-    const isMobile = window.innerWidth < 768;
+    window.atOptions = {
+      key: config.key,
+      format: 'iframe',
+      height: config.height,
+      width: config.width,
+      params: {},
+    };
 
-    const adConfig = isMobile
-      ? {
-          key: '001e8aff2d2b6f5e150e16ad3b4dfbd5',
-          format: 'iframe',
-          height: 50,
-          width: 320,
-          params: {},
-        }
-      : {
-          key: '9e5b7e2779af4bff9cd0cf5db7614123',
-          format: 'iframe',
-          height: 90,
-          width: 728,
-          params: {},
-        };
-
-    (window as unknown as Record<string, unknown>).atOptions = adConfig;
+    const optionsScript = document.createElement('script');
+    optionsScript.type = 'text/javascript';
+    optionsScript.text = `atOptions = ${JSON.stringify({
+      key: config.key,
+      format: 'iframe',
+      height: config.height,
+      width: config.width,
+      params: {},
+    })};`;
 
     const invokeScript = document.createElement('script');
     invokeScript.type = 'text/javascript';
+    invokeScript.setAttribute('data-cfasync', 'false');
     invokeScript.async = true;
-    invokeScript.src = `https://bauval.org/22/${adConfig.key}`;
+    invokeScript.src = config.src;
 
+    container.appendChild(optionsScript);
     container.appendChild(invokeScript);
-  }, []);
+
+    return () => {
+      container.innerHTML = '';
+    };
+  }, [isDesktop]);
 
   return (
-    <div className="flex w-full shrink-0 justify-center overflow-hidden border-t border-[#5C3317]/60 bg-[#1F1007] py-1">
+    <aside
+      aria-label="Advertisement"
+      className="fixed bottom-0 left-0 right-0 z-40 flex items-center justify-center bg-black/80 py-1"
+    >
       <div
-        ref={bannerRef}
-        className="flex min-h-[50px] md:min-h-[90px] items-center justify-center"
+        ref={containerRef}
+        className="flex items-center justify-center overflow-hidden"
+        style={{
+          minWidth: isDesktop ? DESKTOP_BANNER.width : MOBILE_BANNER.width,
+          minHeight: isDesktop ? DESKTOP_BANNER.height : MOBILE_BANNER.height,
+        }}
       />
-    </div>
+    </aside>
   );
 }

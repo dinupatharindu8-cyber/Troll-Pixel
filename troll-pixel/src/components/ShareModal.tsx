@@ -8,6 +8,7 @@ interface ShareModalProps {
   currentLevelId: number;
   totalDeaths: number;
   elapsedMs: number;
+  bestRunMs?: number;
   deathsPerLevel: Record<number, number>;
   onPlayAgain: () => void;
   onClose?: () => void;
@@ -27,6 +28,7 @@ export function ShareModal({
   currentLevelId,
   totalDeaths,
   elapsedMs,
+  bestRunMs,
   deathsPerLevel,
   onPlayAgain,
   onClose,
@@ -35,9 +37,10 @@ export function ShareModal({
 
   if (!open) return null;
 
+  const formattedTime = formatRunTime(elapsedMs);
   const shareText = isVictory
-    ? `I beat all 30 levels of TROLL PIXEL with only ${totalDeaths} deaths and earned Certified Troll Master! Can you survive Impossible Mode?`
-    : `I died ${totalDeaths} times in TROLL PIXEL (currently on Level ${currentLevelId} / ${LEVELS.length})! Can you survive Impossible Mode?`;
+    ? `I beat all ${LEVELS.length} levels of TROLL PIXEL in ${formattedTime} with ${totalDeaths} deaths and earned Certified Troll Master! Can you survive Developer's Revenge?`
+    : `I'm at Level ${currentLevelId}/${LEVELS.length} in TROLL PIXEL with ${totalDeaths} deaths in ${formattedTime}! Can you survive Developer's Revenge?`;
 
   const handleCopy = async () => {
     try {
@@ -79,7 +82,7 @@ export function ShareModal({
               </h2>
               <p className="text-sm text-[#E8A14F]">
                 {isVictory
-                  ? 'All 30 levels across Worlds 1–3 conquered.'
+                  ? `All ${LEVELS.length} levels across Worlds 1–5 conquered.`
                   : `Currently battling Level ${currentLevelId} / ${LEVELS.length}.`}
               </p>
             </div>
@@ -102,24 +105,31 @@ export function ShareModal({
           <div className="rounded-lg border border-[#5C3317] bg-[#3B2110] p-4">
             <div className="flex items-center gap-2 text-xs font-medium text-[#E8A14F]">
               <Skull className="h-4 w-4" />
-              <span>Total Deaths ({LEVELS.length} Levels)</span>
+              <span>Total Deaths</span>
             </div>
             <div className="mt-1 font-arcade text-3xl font-bold tabular-nums text-[#FFF7ED]">
               {totalDeaths}
             </div>
           </div>
           <div className="rounded-lg border border-[#5C3317] bg-[#3B2110] p-4">
-            <div className="flex items-center gap-2 text-xs font-medium text-[#E8A14F]">
-              <Timer className="h-4 w-4" />
-              <span>Run Time</span>
+            <div className="flex items-center justify-between gap-2 text-xs font-medium text-[#E8A14F]">
+              <span className="flex items-center gap-1.5">
+                <Timer className="h-4 w-4" />
+                <span>Total Time</span>
+              </span>
+              {isVictory && bestRunMs !== undefined && (
+                <span className="font-arcade text-[10px] text-[#4ADE80]">
+                  BEST {formatRunTime(bestRunMs)}
+                </span>
+              )}
             </div>
             <div className="mt-1 font-arcade text-3xl font-bold tabular-nums text-[#FFF7ED]">
-              {formatRunTime(elapsedMs)}
+              {formattedTime}
             </div>
           </div>
         </div>
 
-        {/* Per-Level Breakdown (All 30 Levels) */}
+        {/* Per-Level Breakdown (All 50 Levels) */}
         <div className="mt-4 rounded-lg border border-[#5C3317] bg-[#241208] p-3">
           <div className="mb-2 flex items-center justify-between text-xs font-semibold text-[#E8A14F]">
             <span>Deaths by Level (1–{LEVELS.length})</span>
@@ -131,7 +141,15 @@ export function ShareModal({
             {LEVELS.map((lvl) => {
               const d = deathsPerLevel[lvl.id] || 0;
               const tierColor =
-                lvl.id > 20 ? 'text-[#C4B5FD]' : lvl.id > 10 ? 'text-[#FCA5A5]' : 'text-[#E8A14F]';
+                lvl.id > 40
+                  ? 'text-[#F87171]'
+                  : lvl.id > 30
+                    ? 'text-[#FDBA74]'
+                    : lvl.id > 20
+                      ? 'text-[#C4B5FD]'
+                      : lvl.id > 10
+                        ? 'text-[#FCA5A5]'
+                        : 'text-[#E8A14F]';
               return (
                 <div
                   key={lvl.id}

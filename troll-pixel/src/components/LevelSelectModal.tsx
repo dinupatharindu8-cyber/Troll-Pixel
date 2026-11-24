@@ -145,7 +145,7 @@ export function LevelSelectModal({
         {/* World 4 */}
         <div className="mt-6 border-t border-[#5C3317]/50 pt-5">
           <div className="flex items-center justify-between">
-            <h3 className="font-arcade text-sm font-bold text-[#67E8F9]">
+            <h3 className="font-arcade text-sm font-bold text-[#FDBA74]">
               World 4: Pure Pain &amp; Betrayal (31–40)
             </h3>
             <span className="font-arcade text-xs tabular-nums text-[#E8A14F]">
@@ -158,7 +158,7 @@ export function LevelSelectModal({
         {/* World 5 */}
         <div className="mt-6 border-t border-[#5C3317]/50 pt-5">
           <div className="flex items-center justify-between">
-            <h3 className="font-arcade text-sm font-bold text-[#F472B6]">
+            <h3 className="font-arcade text-sm font-bold text-[#F87171]">
               World 5: Developer&apos;s Revenge (41–50)
             </h3>
             <span className="font-arcade text-xs tabular-nums text-[#E8A14F]">
